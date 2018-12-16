@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define MAX_TIMINGS	85
-#define DHT_PIN		2	/* GPIO-27 */
+#define DHT_PIN		3	/* GPIO-27 */
 
 int data[5] = { 0, 0, 0, 0, 0 };
 
