@@ -34,6 +34,9 @@ int lastChangeTime;	//store the change time of button state
 int reading;
 
 int lcdhd;// used to handle LCD
+
+int getDHT(void);
+
 void printCPUTemperature(){// sub function used to print CPU temperature
     FILE *fp;
     char str_temp[15];
@@ -75,7 +78,7 @@ void printClear(int lineToClear){//used to print system time
     }
 
 int main(void){
-    int i;
+    int i,dhtRet=0;
 
     if(wiringPiSetup() == -1){ //when initialize wiring failed,print messageto screen
         printf("setup wiringPi failed !");
@@ -96,7 +99,8 @@ int main(void){
 
     pinMode(buttonPin, INPUT);
 	pullUpDnControl(buttonPin, PUD_UP);  //pull up to high level
-    while(1){
+    while(1)
+    {
              reading = digitalRead(buttonPin); //read the current state of button
              buttonState=reading;
 //printf("Button State = %d\n", reading);
@@ -123,10 +127,10 @@ int main(void){
 					//printf("Button is released!\n ");
 					lcdClear(lcdhd);
                     printCPUTemperature();
-                    read_dht_data();
-                        delay( 2000 ); /* wait 2 seconds before next read */
+                    delay( 2000 ); /* wait 2 seconds before next read */
 				}
-    delay(100);
-    }
+        delay(100);
+        dhtRet = getDHT();
+        }
     }
 
