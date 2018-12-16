@@ -25,6 +25,7 @@
 #define D7      BASE+7
 #define buttonPin 1		//define the buttonPin
 #define ledPin 0
+
 int pressCnt=1;
 int buttonState=HIGH;	//store the State of button
 int lastbuttonState=HIGH;//store the lastState of button
