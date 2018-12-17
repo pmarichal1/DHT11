@@ -10,6 +10,7 @@
 #include <pcf8574.h>
 #include <lcd.h>
 #include <time.h>
+#include <stdint.h>
 
 //#define pcf8574_address 0x27        // default I2C address of Pcf8574
 #define pcf8574_address 0x3F        // default I2C address of Pcf8574A
@@ -25,7 +26,25 @@
 #define D7      BASE+7
 #define buttonPin 1		//define the buttonPin
 #define ledPin 0
+#define DHT11_Pin  3    //define the pin of sensor
 
+////read return flag of sensor
+#define DHTLIB_OK               0
+#define DHTLIB_ERROR_CHECKSUM   -1
+#define DHTLIB_ERROR_TIMEOUT    -2
+#define DHTLIB_INVALID_VALUE    -999
+
+#define DHTLIB_DHT11_WAKEUP     18
+#define DHTLIB_DHT_WAKEUP       1
+
+#define DHTLIB_TIMEOUT          100
+
+
+double humidity,temperature;    //use to store temperature and humidity data read
+int readDHT11(int pin);     //read DHT11
+uint8_t bits[5];    //Buffer to receiver data
+int readSensor(int pin,int wakeupDelay);    //
+int sumCnt=0,sumCntFailures=0;
 int pressCnt=1;
 int buttonState=HIGH;	//store the State of button
 int lastbuttonState=HIGH;//store the lastState of button
@@ -37,7 +56,21 @@ int lcdhd;// used to handle LCD
 
 int getDHT(void);
 
-void printCPUTemperature(){// sub function used to print CPU temperature
+void printTemperature()
+    {// sub function used to print CPU temperature
+    //printf("CPU's temperature : %.2fF \n",CPU_temp);
+    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"TEMP:%.2fF",temperature);// Display CPU temperature on LCD
+    }
+ void printHumidity()
+    {// sub function used to print CPU temperature
+    //printf("CPU's temperature : %.2fF \n",CPU_temp);
+    lcdPosition(lcdhd,0,1);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"Humidity:%.2f%%",humidity);// Display CPU temperature on LCD
+    }
+
+void printCPUTemperature()
+    {// sub function used to print CPU temperature
     FILE *fp;
     char str_temp[15];
     float CPU_temp;
@@ -50,8 +83,9 @@ void printCPUTemperature(){// sub function used to print CPU temperature
     lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
     lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
     fclose(fp);
-}
-void printDataTime(){//used to print system time
+    }
+void printDataTime()
+    {//used to print system time
     time_t rawtime;
     struct tm *timeinfo;
     time(&rawtime);// get system time
@@ -59,11 +93,12 @@ void printDataTime(){//used to print system time
     //printf("%s \n",asctime(timeinfo));
     lcdPosition(lcdhd,0,1);// set the LCD cursor position to (0,1)
     lcdPrintf(lcdhd,"Time:%d:%d:%d",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
-    lcdPosition(lcdhd,0,0);// set the LCD cursor position to (0,1)
-    lcdPrintf(lcdhd,"LED ON = %d",millis()/1000);
+ //   lcdPosition(lcdhd,0,0);// set the LCD cursor position to (0,1)
+ //   lcdPrintf(lcdhd,"LED ON = %d",millis()/1000);
     }
 
-void printClear(int lineToClear){//used to print system time
+void printClear(int lineToClear)
+    {//used to print system time
 
     lcdPosition(lcdhd,0,lineToClear);// set the LCD cursor position to (0,1)
     lcdPrintf(lcdhd,"                 ");
@@ -77,7 +112,8 @@ void printClear(int lineToClear){//used to print system time
     printf("Elapsed=%d\n",elapsedTime/1000);
     }
 
-int main(void){
+int main(void)
+    {
     int i,dhtRet=0;
 
     if(wiringPiSetup() == -1){ //when initialize wiring failed,print messageto screen
@@ -100,37 +136,180 @@ int main(void){
     pinMode(buttonPin, INPUT);
 	pullUpDnControl(buttonPin, PUD_UP);  //pull up to high level
     while(1)
-    {
-             reading = digitalRead(buttonPin); //read the current state of button
-             buttonState=reading;
+        {
+        dhtRet=getDHT();
+        reading = digitalRead(buttonPin); //read the current state of button
+        buttonState=reading;
 //printf("Button State = %d\n", reading);
 
-				if(buttonState == LOW){
-					printf("Button is pressed! = %d\n", pressCnt);
-					pressCnt++;
-					lcdClear(lcdhd);
-                    printDataTime();        // print system time
-                    for (int loop=0;loop<5 ;loop++)
+        if(buttonState == HIGH)
+            {
+            pressCnt++;
+            lcdClear(lcdhd);
+            printDataTime();        // print system time
+            for (int loop=0;loop<5 ;loop++)
+                {
+                if(dhtRet == 0)
                     {
-                    digitalWrite(ledPin, HIGH);  //led on
-			        //printf("led on...\n");
-			        delay(250);
-			        //printMillis();
-                    digitalWrite(ledPin, LOW);  //led off
-			        //printf("...led off\n");
-                    delay(250);
-                    //printMillis();
+                    printTemperature();
+                    printHumidity();
                     }
-					}
+                }
+            delay( 2000 ); /* wait 2 seconds before next read */
+            }
 				//if the state is high ,the action is releasing
-				else {
-					//printf("Button is released!\n ");
-					lcdClear(lcdhd);
-                    printCPUTemperature();
-                    delay( 2000 ); /* wait 2 seconds before next read */
-				}
-        delay(100);
-        dhtRet = getDHT();
+        else
+            {
+            printf("Button is pressed! = %d\n", pressCnt);
+            for (int loop=0;loop<5 ;loop++)
+                {
+                digitalWrite(ledPin, HIGH);  //led on
+                //printf("led on...\n");
+                delay(250);
+                //printMillis();
+                digitalWrite(ledPin, LOW);  //led off
+                //printf("...led off\n");
+                delay(250);
+                //printMillis();
+                lcdClear(lcdhd);
+                printCPUTemperature();
+                printDataTime();
+                delay( 2000 ); /* wait 2 seconds before next read */
+                }
+            }
         }
     }
 
+
+//Function: Read DHT sensor, store the original data in bits[]
+// return values:DHTLIB_OK   DHTLIB_ERROR_CHECKSUM  DHTLIB_ERROR_TIMEOUT
+int readSensor(int pin,int wakeupDelay)
+    {
+	int mask = 0x80;
+	int idx = 0;
+	int i ;
+	int32_t t;
+	for (i=0;i<5;i++){
+		bits[i] = 0;
+	}
+	pinMode(pin,OUTPUT);
+	digitalWrite(pin,LOW);
+	delay(wakeupDelay);
+	digitalWrite(pin,HIGH);
+	delayMicroseconds(40);
+	pinMode(pin,INPUT);
+
+	int32_t loopCnt = DHTLIB_TIMEOUT;
+	t = micros();
+	while(digitalRead(pin)==LOW){
+		if((micros() - t) > loopCnt){
+			return DHTLIB_ERROR_TIMEOUT;
+		}
+	}
+	loopCnt = DHTLIB_TIMEOUT;
+	t = micros();
+	while(digitalRead(pin)==HIGH){
+		if((micros() - t) > loopCnt){
+			return DHTLIB_ERROR_TIMEOUT;
+		}
+	}
+	for (i = 0; i<40;i++){
+		loopCnt = DHTLIB_TIMEOUT;
+		t = micros();
+		while(digitalRead(pin)==LOW){
+			if((micros() - t) > loopCnt)
+				return DHTLIB_ERROR_TIMEOUT;
+		}
+		t = micros();
+		loopCnt = DHTLIB_TIMEOUT;
+		while(digitalRead(pin)==HIGH){
+			if((micros() - t) > loopCnt){
+				return DHTLIB_ERROR_TIMEOUT;
+			}
+		}
+		if((micros() - t ) > 60){
+			bits[idx] |= mask;
+		}
+		mask >>= 1;
+		if(mask == 0){
+			mask = 0x80;
+			idx++;
+		}
+	}
+	pinMode(pin,OUTPUT);
+	digitalWrite(pin,HIGH);
+	//printf("bits:\t%d,\t%d,\t%d,\t%d,\t%d\n",bits[0],bits[1],bits[2],bits[3],bits[4]);
+	return DHTLIB_OK;
+}
+//Function：Read DHT sensor, analyze the data of temperature and humidity
+//return：DHTLIB_OK   DHTLIB_ERROR_CHECKSUM  DHTLIB_ERROR_TIMEOUT
+int readDHT11(int pin)
+    {
+	int rv ;
+	uint8_t sum;
+	rv = readSensor(pin,DHTLIB_DHT11_WAKEUP);
+	if(rv != DHTLIB_OK){
+		humidity = DHTLIB_INVALID_VALUE;
+		temperature = DHTLIB_INVALID_VALUE;
+		return rv;
+	}
+	humidity = bits[0];
+	temperature = bits[2] + bits[3] * 0.1;
+	sum = bits[0] + bits[1] + bits[2] + bits[3];
+	if(bits[4] != sum)
+		return DHTLIB_ERROR_CHECKSUM;
+	return DHTLIB_OK;
+    }
+
+int getDHT()
+{
+    float hightemp=0,lowtemp=100,highhumid=0,lowhumid=100;
+    int chk,retVal=0;//chk:read the return value of sensor; sumCnt:times of reading sensor
+    if(wiringPiSetup() == -1)
+        { //when initialize wiring failed,print messageto screen
+        printf("setup wiringPi failed !");
+        return 1;
+        }
+    chk = readDHT11(DHT11_Pin); //read DHT11 and get a return value. Then determine whether data read is normal according to the return value.
+    sumCnt++;       //counting number of reading times
+    printf("The sumCnt is : %d  FailureCnt = %d\n",sumCnt,sumCntFailures);
+ //   printf("chk=%x\n",chk);
+    switch(chk)
+        {
+        case DHTLIB_OK:     //if the return value is DHTLIB_OK, the data is normal.
+        //printf("DHT11,OK! \n");
+            retVal=0;
+            break;
+        case DHTLIB_ERROR_CHECKSUM:     //data check has errors
+            printf("DHTLIB_ERROR_CHECKSUM! \n");
+            sumCntFailures++;
+            retVal=1;
+            break;
+        case DHTLIB_ERROR_TIMEOUT:      //reading DHT times out
+            printf("DHTLIB_ERROR_TIMEOUT! \n");
+            sumCntFailures++;
+            retVal=1;
+            break;
+        case DHTLIB_INVALID_VALUE:      //other errors
+            printf("DHTLIB_INVALID_VALUE! \n");
+            sumCntFailures++;
+            retVal=1;
+            break;
+        }
+    temperature = (temperature*9/5)+32;
+ //   printf("Humidity is %.2f %%, \t Temperature is %.2f *F\n\n",humidity,temperature);
+    if(chk ==0)
+        {
+        if(temperature > hightemp)
+            hightemp = temperature;
+        if(temperature < lowtemp && temperature <100)
+            lowtemp = temperature;
+        if(humidity > highhumid)
+            highhumid = humidity;
+        if(humidity < lowhumid && humidity >0)
+            lowhumid = humidity;
+        printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n\n",highhumid,hightemp);
+        printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\n\n",lowhumid,lowtemp);
+        }
+return retVal;
+}
