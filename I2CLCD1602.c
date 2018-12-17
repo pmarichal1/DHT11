@@ -51,6 +51,8 @@ int lastbuttonState=HIGH;//store the lastState of button
 int captureTime=50;	//set the button state stable time
 int lastChangeTime;	//store the change time of button state
 int reading;
+float hightemp=0,lowtemp=100,highhumid=0,lowhumid=100;
+
 
 int lcdhd;// used to handle LCD
 
@@ -263,7 +265,6 @@ int readDHT11(int pin)
 
 int getDHT()
 {
-    float hightemp=0,lowtemp=100,highhumid=0,lowhumid=100;
     int chk,retVal=0;//chk:read the return value of sensor; sumCnt:times of reading sensor
     if(wiringPiSetup() == -1)
         { //when initialize wiring failed,print messageto screen
