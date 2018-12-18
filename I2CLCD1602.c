@@ -37,8 +37,7 @@
 #define DHTLIB_DHT11_WAKEUP     18
 #define DHTLIB_DHT_WAKEUP       1
 
-#define DHTLIB_TIMEOUT          100
-
+#define DHTLIB_TIMEOUT          400
 
 double humidity,temperature;    //use to store temperature and humidity data read
 int readDHT11(int pin);     //read DHT11
@@ -143,12 +142,12 @@ int main(void)
         reading = digitalRead(buttonPin); //read the current state of button
         buttonState=reading;
 //printf("Button State = %d\n", reading);
+        lcdClear(lcdhd);
 
-        if(buttonState == HIGH)
+        if(buttonState == HIGH) //not pressed
             {
             pressCnt++;
-            lcdClear(lcdhd);
-            printDataTime();        // print system time
+        //    lcdClear(lcdhd);
             for (int loop=0;loop<5 ;loop++)
                 {
                 if(dhtRet == 0)
@@ -157,26 +156,26 @@ int main(void)
                     printHumidity();
                     }
                 }
-            delay( 2000 ); /* wait 2 seconds before next read */
+            delay( 1000 ); /* wait 1 seconds before next read */
             }
-				//if the state is high ,the action is releasing
+
         else
             {
             printf("Button is pressed! = %d\n", pressCnt);
+      //      lcdClear(lcdhd);
             for (int loop=0;loop<5 ;loop++)
                 {
                 digitalWrite(ledPin, HIGH);  //led on
-                //printf("led on...\n");
+                printf("led on...\n");
                 delay(250);
                 //printMillis();
                 digitalWrite(ledPin, LOW);  //led off
                 //printf("...led off\n");
                 delay(250);
                 //printMillis();
-                lcdClear(lcdhd);
                 printCPUTemperature();
                 printDataTime();
-                delay( 2000 ); /* wait 2 seconds before next read */
+                delay( 1000 ); /* wait 1 seconds before next read */
                 }
             }
         }
@@ -273,7 +272,7 @@ int getDHT()
         }
     chk = readDHT11(DHT11_Pin); //read DHT11 and get a return value. Then determine whether data read is normal according to the return value.
     sumCnt++;       //counting number of reading times
-    printf("The sumCnt is : %d  FailureCnt = %d\n",sumCnt,sumCntFailures);
+    printf("\nThe sumCnt is : %d  FailureCnt = %d\n",sumCnt,sumCntFailures);
  //   printf("chk=%x\n",chk);
     switch(chk)
         {
@@ -309,7 +308,7 @@ int getDHT()
             highhumid = humidity;
         if(humidity < lowhumid && humidity >0)
             lowhumid = humidity;
-        printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n\n",highhumid,hightemp);
+        printf("\n\nHigh Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
         printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\n\n",lowhumid,lowtemp);
         }
 return retVal;
