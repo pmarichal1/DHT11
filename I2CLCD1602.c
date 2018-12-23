@@ -28,6 +28,7 @@
 #define ledPin 0
 #define DHT11_Pin  3    //define the pin of sensor
 
+
 ////read return flag of sensor
 #define DHTLIB_OK               0
 #define DHTLIB_ERROR_CHECKSUM   -1
@@ -115,7 +116,7 @@ void printClear(int lineToClear)
 
 int main(void)
     {
-    int i,dhtRet=0;
+    int i,dhtRet=0,loopCnt=0;
 
     if(wiringPiSetup() == -1){ //when initialize wiring failed,print messageto screen
         printf("setup wiringPi failed !");
@@ -147,16 +148,14 @@ int main(void)
         if(buttonState == HIGH) //not pressed
             {
             pressCnt++;
-        //    lcdClear(lcdhd);
-            for (int loop=0;loop<5 ;loop++)
+            if(dhtRet == 0)
                 {
-                if(dhtRet == 0)
-                    {
-                    printTemperature();
-                    printHumidity();
-                    }
+                printf("LOOP %d\n",loopCnt);
+                printTemperature();
+                printHumidity();
                 }
-            delay( 1000 ); /* wait 1 seconds before next read */
+            delay( 5000 ); /* wait 1 seconds before next read */
+            loopCnt++;
             }
 
         else
@@ -199,6 +198,7 @@ int readSensor(int pin,int wakeupDelay)
 	digitalWrite(pin,HIGH);
 	delayMicroseconds(40);
 	pinMode(pin,INPUT);
+
 
 	int32_t loopCnt = DHTLIB_TIMEOUT;
 	t = micros();
@@ -308,8 +308,13 @@ int getDHT()
             highhumid = humidity;
         if(humidity < lowhumid && humidity >0)
             lowhumid = humidity;
-        printf("\n\nHigh Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
+                      lcdClear(lcdhd);
+        printf("\n\nCurrent Humidity is %.2f %%, \t Current Temperature is %.2f *F\n",humidity,temperature);
+        printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
         printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\n\n",lowhumid,lowtemp);
         }
 return retVal;
 }
+
+
+
