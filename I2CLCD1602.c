@@ -27,7 +27,7 @@
 #define buttonPin 1		//define the buttonPin
 #define ledPin 0
 #define DHT11_Pin  3    //define the pin of sensor
-
+//testing
 
 ////read return flag of sensor
 #define DHTLIB_OK               0
