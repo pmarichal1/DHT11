@@ -1,3 +1,4 @@
+google
 /**********************************************************************
 * Filename    : I2CLCD1602.c
 * Description : Use the LCD display data
@@ -35,10 +36,10 @@
 #define DHTLIB_ERROR_TIMEOUT    -2
 #define DHTLIB_INVALID_VALUE    -999
 
-#define DHTLIB_DHT11_WAKEUP     18
-#define DHTLIB_DHT_WAKEUP       1
+#define DHTLIB_DHT11_WAKEUP     18 //18 original value
+//#define DHTLIB_DHT_WAKEUP       2     // 1 original
 
-#define DHTLIB_TIMEOUT          400
+#define DHTLIB_TIMEOUT          400  //400 original
 
 double humidity,temperature;    //use to store temperature and humidity data read
 int readDHT11(int pin);     //read DHT11
@@ -52,6 +53,7 @@ int captureTime=50;	//set the button state stable time
 int lastChangeTime;	//store the change time of button state
 int reading;
 float hightemp=0,lowtemp=100,highhumid=0,lowhumid=100;
+float percentFailure=0;
 
 
 int lcdhd;// used to handle LCD
@@ -154,7 +156,7 @@ int main(void)
                 printTemperature();
                 printHumidity();
                 }
-            delay( 5000 ); /* wait 1 seconds before next read */
+            delay( 2000 ); /* wait 1 seconds before next read */
             loopCnt++;
             }
 
@@ -273,7 +275,8 @@ int getDHT()
         }
     chk = readDHT11(DHT11_Pin); //read DHT11 and get a return value. Then determine whether data read is normal according to the return value.
     sumCnt++;       //counting number of reading times
-    printf("\nThe sumCnt is : %d  FailureCnt = %d\n",sumCnt,sumCntFailures);
+    percentFailure = (((float)sumCntFailures/(float)sumCnt)*100);
+    printf("\nThe sumCnt is : %d  FailureCnt = %d  Failure%% %2.2f\n",sumCnt,sumCntFailures,percentFailure);
  //   printf("chk=%x\n",chk);
     switch(chk)
         {
