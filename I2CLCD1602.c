@@ -1,4 +1,4 @@
-google
+
 /**********************************************************************
 * Filename    : I2CLCD1602.c
 * Description : Use the LCD display data
@@ -59,62 +59,15 @@ float percentFailure=0;
 int lcdhd;// used to handle LCD
 
 int getDHT(void);
+void printTemperature(void);
+void printHumidity(void);
+void printCPUTemperature(void);
+void printDataTime(void);
+void printClear(int);
+void printMillis(void);
 
-void printTemperature()
-    {// sub function used to print CPU temperature
-    //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"TEMP:%.2fF",temperature);// Display CPU temperature on LCD
-    }
- void printHumidity()
-    {// sub function used to print CPU temperature
-    //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,1);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"Humidity:%.2f%%",humidity);// Display CPU temperature on LCD
-    }
 
-void printCPUTemperature()
-    {// sub function used to print CPU temperature
-    FILE *fp;
-    char str_temp[15];
-    float CPU_temp;
-    // CPU temperature data is stored in this directory.
-    fp=fopen("/sys/class/thermal/thermal_zone0/temp","r");
-    fgets(str_temp,15,fp);      // read file temp
-    CPU_temp = atof(str_temp)/1000.0;   // convert to Celsius degrees
-    CPU_temp=(CPU_temp*9/5)+32;//convert to Farenheit
-    //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
-    fclose(fp);
-    }
-void printDataTime()
-    {//used to print system time
-    time_t rawtime;
-    struct tm *timeinfo;
-    time(&rawtime);// get system time
-    timeinfo = localtime(&rawtime);// convert to local time
-    //printf("%s \n",asctime(timeinfo));
-    lcdPosition(lcdhd,0,1);// set the LCD cursor position to (0,1)
-    lcdPrintf(lcdhd,"Time:%d:%d:%d",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
- //   lcdPosition(lcdhd,0,0);// set the LCD cursor position to (0,1)
- //   lcdPrintf(lcdhd,"LED ON = %d",millis()/1000);
-    }
 
-void printClear(int lineToClear)
-    {//used to print system time
-
-    lcdPosition(lcdhd,0,lineToClear);// set the LCD cursor position to (0,1)
-    lcdPrintf(lcdhd,"                 ");
-    }
-
- void printMillis(void)
-    {
-    int elapsedTime;
-    elapsedTime = millis() - lastChangeTime;
-    lastChangeTime= millis() ;
-    printf("Elapsed=%d\n",elapsedTime/1000);
-    }
 
 int main(void)
     {
@@ -181,6 +134,63 @@ int main(void)
             }
         }
     }
+
+void printTemperature()
+    {// sub function used to print CPU temperature
+    //printf("CPU's temperature : %.2fF \n",CPU_temp);
+    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"TEMP:%.2fF",temperature);// Display CPU temperature on LCD
+    }
+ void printHumidity()
+    {// sub function used to print CPU temperature
+    //printf("CPU's temperature : %.2fF \n",CPU_temp);
+    lcdPosition(lcdhd,0,1);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"Humidity:%.2f%%",humidity);// Display CPU temperature on LCD
+    }
+
+void printCPUTemperature()
+    {// sub function used to print CPU temperature
+    FILE *fp;
+    char str_temp[15];
+    float CPU_temp;
+    // CPU temperature data is stored in this directory.
+    fp=fopen("/sys/class/thermal/thermal_zone0/temp","r");
+    fgets(str_temp,15,fp);      // read file temp
+    CPU_temp = atof(str_temp)/1000.0;   // convert to Celsius degrees
+    CPU_temp=(CPU_temp*9/5)+32;//convert to Farenheit
+    //printf("CPU's temperature : %.2fF \n",CPU_temp);
+    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
+    fclose(fp);
+    }
+void printDataTime()
+    {//used to print system time
+    time_t rawtime;
+    struct tm *timeinfo;
+    time(&rawtime);// get system time
+    timeinfo = localtime(&rawtime);// convert to local time
+    //printf("%s \n",asctime(timeinfo));
+    lcdPosition(lcdhd,0,1);// set the LCD cursor position to (0,1)
+    lcdPrintf(lcdhd,"Time:%d:%d:%d",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
+ //   lcdPosition(lcdhd,0,0);// set the LCD cursor position to (0,1)
+ //   lcdPrintf(lcdhd,"LED ON = %d",millis()/1000);
+    }
+
+void printClear(int lineToClear)
+    {//used to print system time
+
+    lcdPosition(lcdhd,0,lineToClear);// set the LCD cursor position to (0,1)
+    lcdPrintf(lcdhd,"                 ");
+    }
+
+ void printMillis(void)
+    {
+    int elapsedTime;
+    elapsedTime = millis() - lastChangeTime;
+    lastChangeTime= millis() ;
+    printf("Elapsed=%d\n",elapsedTime/1000);
+    }
+
 
 
 //Function: Read DHT sensor, store the original data in bits[]
@@ -263,7 +273,6 @@ int readDHT11(int pin)
 		return DHTLIB_ERROR_CHECKSUM;
 	return DHTLIB_OK;
     }
-  //testing push to repo 
 
 int getDHT()
 {
