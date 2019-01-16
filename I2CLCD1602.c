@@ -12,6 +12,8 @@
 #include <lcd.h>
 #include <time.h>
 #include <stdint.h>
+#include <sys/time.h>
+
 
 //#define pcf8574_address 0x27        // default I2C address of Pcf8574
 #define pcf8574_address 0x3F        // default I2C address of Pcf8574A
@@ -28,7 +30,12 @@
 #define buttonPin 1		//define the buttonPin
 #define ledPin 0
 #define DHT11_Pin  3    //define the pin of sensor
-//testing
+
+//sonar setup
+#define trigPin 4       
+#define echoPin 5
+#define MAX_DISTANCE 220        // define the maximum measured distance
+#define timeOut MAX_DISTANCE*60 // calculate timeout according to the maximum measured distance
 
 ////read return flag of sensor
 #define DHTLIB_OK               0
@@ -47,8 +54,8 @@ uint8_t bits[5];    //Buffer to receiver data
 int readSensor(int pin,int wakeupDelay);    //
 int sumCnt=0,sumCntFailures=0;
 int pressCnt=1;
-int buttonState=HIGH;	//store the State of button
-int lastbuttonState=HIGH;//store the lastState of button
+int displayState=HIGH;	//store the State of button
+int lastDisplayState=HIGH;//store the lastState of button
 int captureTime=50;	//set the button state stable time
 int lastChangeTime;	//store the change time of button state
 int reading;
@@ -59,20 +66,25 @@ float percentFailure=0;
 int lcdhd;// used to handle LCD
 
 int getDHT(void);
-void printTemperature(void);
-void printHumidity(void);
-void printCPUTemperature(void);
-void printDataTime(void);
+void printTemperature(int);
+void printHumidity(int);
+void printTemperatureErrors (void);
+void printCPUTemperature(int);
+void printDataTime(int);
+void printSonar(int);
 void printClear(int);
 void printMillis(void);
+float getSonar();  // get the measurement results of ultrasonic module,with unit: cm
 
 
+//function pulseIn: obtain pulse time of a pin
+int pulseIn(int pin, int level, int timeout);
 
 
 int main(void)
     {
-    int i,dhtRet=0,loopCnt=0;
-
+    int DHTloop,dhtRet=0,loopCnt=0,i=0;
+    
     if(wiringPiSetup() == -1){ //when initialize wiring failed,print messageto screen
         printf("setup wiringPi failed !");
         return 1;
@@ -81,6 +93,8 @@ int main(void)
     for(i=0;i<8;i++){
         pinMode(BASE+i,OUTPUT);     // set PCF8574 port to output mode
     }
+    pinMode(trigPin,OUTPUT);
+    pinMode(echoPin,INPUT);
     digitalWrite(LED,HIGH);     // turn on LCD backlight
     digitalWrite(RW,LOW);       // allow writing to LCD
     pinMode(ledPin, OUTPUT);//Set the pin mode
@@ -91,64 +105,95 @@ int main(void)
     }
 
     pinMode(buttonPin, INPUT);
-	pullUpDnControl(buttonPin, PUD_UP);  //pull up to high level
+    pullUpDnControl(buttonPin, PUD_UP);  //pull up to high level
     while(1)
         {
-        dhtRet=getDHT();
-        reading = digitalRead(buttonPin); //read the current state of button
-        buttonState=reading;
-//printf("Button State = %d\n", reading);
-        lcdClear(lcdhd);
+	reading = digitalRead(buttonPin); //read the current state of button
+	if(reading == LOW)
+	    printTemperatureErrors ();
+	// toggle display state    
+	if(lastDisplayState==LOW)
+	    displayState = HIGH;
+	else
+	    displayState = LOW;
 
-        if(buttonState == HIGH) //not pressed
+        if(displayState == LOW) //pressed
             {
+	    //printf("Button is pressed! = %d\n", pressCnt);
+	    for (DHTloop =0; DHTloop <10; DHTloop++)
+		{
+		//printf("\nReading DHT - %d\n",DHTloop);
+		dhtRet=getDHT();
+		if(dhtRet == 0)
+		    break;
+		delay(1000);
+		}
+	    if(lastDisplayState == HIGH)
+		{
+		printClear(0);
+		printClear(1);
+		lastDisplayState=LOW;
+		}
             pressCnt++;
+	    digitalWrite(ledPin, HIGH);  //led on
+	    delay(250);
+	    digitalWrite(ledPin, LOW);  //led off
+	    delay(250);
             if(dhtRet == 0)
                 {
-                printf("LOOP %d\n",loopCnt);
-                printTemperature();
-                printHumidity();
+                printTemperature(0);
+                printHumidity(1);
                 }
-            delay( 2000 ); /* wait 1 seconds before next read */
             loopCnt++;
             }
 
         else
             {
-            printf("Button is pressed! = %d\n", pressCnt);
-      //      lcdClear(lcdhd);
-            for (int loop=0;loop<5 ;loop++)
-                {
-                digitalWrite(ledPin, HIGH);  //led on
-                printf("led on...\n");
-                delay(250);
-                //printMillis();
-                digitalWrite(ledPin, LOW);  //led off
-                //printf("...led off\n");
-                delay(250);
-                //printMillis();
-                printCPUTemperature();
-                printDataTime();
-                delay( 1000 ); /* wait 1 seconds before next read */
-                }
+	    if(lastDisplayState == LOW)
+		{
+		printClear(0);
+		printClear(1);
+		lastDisplayState=HIGH;
+		}
+	    //printCPUTemperature(1);
+	    printSonar(1);
+	    printDataTime(0);
+	    delay( 1000 ); /* wait 1 seconds before next read */
             }
+	loopCnt=0;
+	delay( 8000 ); /* wait x seconds before next read */
         }
     }
 
-void printTemperature()
+void printTemperatureErrors (void)
+    {
+    printf("\n\e[1;31mThe sumCnt is : %d  FailureCnt = %d  Failure%% %2.2f\n",sumCnt,sumCntFailures,percentFailure);
+    printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
+    printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\e[0m\n\n",lowhumid,lowtemp);
+    }
+    
+void printTemperature(int lineNum)
     {// sub function used to print CPU temperature
     //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
+    lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
     lcdPrintf(lcdhd,"TEMP:%.2fF",temperature);// Display CPU temperature on LCD
     }
- void printHumidity()
+ void printHumidity(int lineNum)
     {// sub function used to print CPU temperature
     //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,1);     // set the LCD cursor position to (0,0)
+    lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
     lcdPrintf(lcdhd,"Humidity:%.2f%%",humidity);// Display CPU temperature on LCD
     }
-
-void printCPUTemperature()
+void printSonar(int lineNum)
+    {// sub function used to print CPU temperature
+    float distance = 0;
+    distance = getSonar();
+    lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
+    lcdPrintf(lcdhd,"Distance: %.2f\n",distance);// Display CPU temperature on LCD
+    printf("\n\e[1;33mDistance:%.2f inches \e[0m\n",distance);// Display CPU temperature on LCD
+    }
+    
+void printCPUTemperature(int lineNum)
     {// sub function used to print CPU temperature
     FILE *fp;
     char str_temp[15];
@@ -159,26 +204,25 @@ void printCPUTemperature()
     CPU_temp = atof(str_temp)/1000.0;   // convert to Celsius degrees
     CPU_temp=(CPU_temp*9/5)+32;//convert to Farenheit
     //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,0);     // set the LCD cursor position to (0,0)
+    lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
     lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
     fclose(fp);
     }
-void printDataTime()
+void printDataTime(int lineNum)
     {//used to print system time
     time_t rawtime;
     struct tm *timeinfo;
     time(&rawtime);// get system time
     timeinfo = localtime(&rawtime);// convert to local time
     //printf("%s \n",asctime(timeinfo));
-    lcdPosition(lcdhd,0,1);// set the LCD cursor position to (0,1)
+    lcdPosition(lcdhd,0,lineNum);// set the LCD cursor position to (0,1)
     lcdPrintf(lcdhd,"Time:%d:%d:%d",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
  //   lcdPosition(lcdhd,0,0);// set the LCD cursor position to (0,1)
  //   lcdPrintf(lcdhd,"LED ON = %d",millis()/1000);
     }
 
 void printClear(int lineToClear)
-    {//used to print system time
-
+    {
     lcdPosition(lcdhd,0,lineToClear);// set the LCD cursor position to (0,1)
     lcdPrintf(lcdhd,"                 ");
     }
@@ -285,12 +329,11 @@ int getDHT()
     chk = readDHT11(DHT11_Pin); //read DHT11 and get a return value. Then determine whether data read is normal according to the return value.
     sumCnt++;       //counting number of reading times
     percentFailure = (((float)sumCntFailures/(float)sumCnt)*100);
-    printf("\nThe sumCnt is : %d  FailureCnt = %d  Failure%% %2.2f\n",sumCnt,sumCntFailures,percentFailure);
- //   printf("chk=%x\n",chk);
+    //printf("chk=%x\n",chk);
     switch(chk)
         {
         case DHTLIB_OK:     //if the return value is DHTLIB_OK, the data is normal.
-        //printf("DHT11,OK! \n");
+	    //printf("DHT11,OK! \n");
             retVal=0;
             break;
         case DHTLIB_ERROR_CHECKSUM:     //data check has errors
@@ -310,7 +353,7 @@ int getDHT()
             break;
         }
     temperature = (temperature*9/5)+32;
- //   printf("Humidity is %.2f %%, \t Temperature is %.2f *F\n\n",humidity,temperature);
+    printf("\n\e[1;32mCurrent Humidity is %.2f %%, \t Current Temperature is %.2fF\e[0m\n",humidity,temperature);
     if(chk ==0)
         {
         if(temperature > hightemp)
@@ -321,13 +364,45 @@ int getDHT()
             highhumid = humidity;
         if(humidity < lowhumid && humidity >0)
             lowhumid = humidity;
-                      lcdClear(lcdhd);
-        printf("\n\nCurrent Humidity is %.2f %%, \t Current Temperature is %.2f *F\n",humidity,temperature);
-        printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
-        printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\n\n",lowhumid,lowtemp);
         }
 return retVal;
 }
 
 
+float getSonar()
+{   // get the measurement results of ultrasonic module,with unit: cm
+    long pingTime;
+    float distance;
+    digitalWrite(trigPin,HIGH); //trigPin send 10us high level 
+    delayMicroseconds(10);
+    digitalWrite(trigPin,LOW);
+    pingTime = pulseIn(echoPin,HIGH,timeOut);   //read plus time of echoPin
+    distance = (float)(pingTime * 340.0/ 2.0 / 10000.0)/2.54; // the sound speed is 340m/s,and calculate distance in inches
+     return distance;
+}
 
+int pulseIn(int pin, int level, int timeout)
+{
+   struct timeval tn, t0, t1;
+   long micros;
+   gettimeofday(&t0, NULL);
+   micros = 0;
+   while (digitalRead(pin) != level)
+   {
+      gettimeofday(&tn, NULL);
+      if (tn.tv_sec > t0.tv_sec) micros = 1000000L; else micros = 0;
+      micros += (tn.tv_usec - t0.tv_usec);
+      if (micros > timeout) return 0;
+   }
+   gettimeofday(&t1, NULL);
+   while (digitalRead(pin) == level)
+   {
+      gettimeofday(&tn, NULL);
+      if (tn.tv_sec > t0.tv_sec) micros = 1000000L; else micros = 0;
+      micros = micros + (tn.tv_usec - t0.tv_usec);
+      if (micros > timeout) return 0;
+   }
+   if (tn.tv_sec > t1.tv_sec) micros = 1000000L; else micros = 0;
+   micros = micros + (tn.tv_usec - t1.tv_usec);
+   return micros;
+}
