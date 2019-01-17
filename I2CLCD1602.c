@@ -27,9 +27,12 @@
 #define D5      BASE+5
 #define D6      BASE+6
 #define D7      BASE+7
-#define buttonPin 1		//define the buttonPin
+//define buttom pin
+#define buttonPin 1
+//define the LED pin
 #define ledPin 0
-#define DHT11_Pin  3    //define the pin of sensor
+//define the pin of sensor
+#define DHT11_Pin  3 
 
 //sonar setup
 #define trigPin 4       
@@ -42,18 +45,14 @@
 #define DHTLIB_ERROR_CHECKSUM   -1
 #define DHTLIB_ERROR_TIMEOUT    -2
 #define DHTLIB_INVALID_VALUE    -999
-
 #define DHTLIB_DHT11_WAKEUP     18 //18 original value
-//#define DHTLIB_DHT_WAKEUP       2     // 1 original
-
 #define DHTLIB_TIMEOUT          400  //400 original
 
 double humidity,temperature;    //use to store temperature and humidity data read
-int readDHT11(int pin);     //read DHT11
 uint8_t bits[5];    //Buffer to receiver data
-int readSensor(int pin,int wakeupDelay);    //
+int readSensor(int pin,int wakeupDelay);
+int readDHT11(int pin);     //read DHT11
 int sumCnt=0,sumCntFailures=0;
-int pressCnt=1;
 int displayState=HIGH;	//store the State of button
 int lastDisplayState=HIGH;//store the lastState of button
 int captureTime=50;	//set the button state stable time
@@ -77,7 +76,7 @@ void printMillis(void);
 float getSonar();  // get the measurement results of ultrasonic module,with unit: cm
 
 
-//function pulseIn: obtain pulse time of a pin
+//function pulseIn: obtain pulse time of a Sonar pin
 int pulseIn(int pin, int level, int timeout);
 
 
@@ -119,7 +118,6 @@ int main(void)
 
         if(displayState == LOW) //pressed
             {
-	    //printf("Button is pressed! = %d\n", pressCnt);
 	    for (DHTloop =0; DHTloop <10; DHTloop++)
 		{
 		//printf("\nReading DHT - %d\n",DHTloop);
@@ -134,11 +132,11 @@ int main(void)
 		printClear(1);
 		lastDisplayState=LOW;
 		}
-            pressCnt++;
 	    digitalWrite(ledPin, HIGH);  //led on
 	    delay(250);
 	    digitalWrite(ledPin, LOW);  //led off
 	    delay(250);
+	    printCPUTemperature(1);
             if(dhtRet == 0)
                 {
                 printTemperature(0);
@@ -161,20 +159,19 @@ int main(void)
 	    delay( 1000 ); /* wait 1 seconds before next read */
             }
 	loopCnt=0;
-	delay( 8000 ); /* wait x seconds before next read */
+	delay( 3000 ); /* wait x seconds before next read */
         }
     }
 
 void printTemperatureErrors (void)
     {
     printf("\n\e[1;31mThe sumCnt is : %d  FailureCnt = %d  Failure%% %2.2f\n",sumCnt,sumCntFailures,percentFailure);
-    printf("High Humidity is %.2f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
-    printf("Low Humidity is %.2f %%, \t Low Temperature is %.2f *F\e[0m\n\n",lowhumid,lowtemp);
+    printf("High Humidity is %.0f %%, \t High Temperature is %.2f *F\n",highhumid,hightemp);
+    printf("Low Humidity is %.0f %%, \t Low Temperature is %.2f *F\e[0m\n\n",lowhumid,lowtemp);
     }
     
 void printTemperature(int lineNum)
     {// sub function used to print CPU temperature
-    //printf("CPU's temperature : %.2fF \n",CPU_temp);
     lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
     lcdPrintf(lcdhd,"TEMP:%.2fF",temperature);// Display CPU temperature on LCD
     }
@@ -182,14 +179,14 @@ void printTemperature(int lineNum)
     {// sub function used to print CPU temperature
     //printf("CPU's temperature : %.2fF \n",CPU_temp);
     lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"Humidity:%.2f%%",humidity);// Display CPU temperature on LCD
+    lcdPrintf(lcdhd,"Humidity:%.0f%%",humidity);// Display CPU temperature on LCD
     }
 void printSonar(int lineNum)
     {// sub function used to print CPU temperature
     float distance = 0;
     distance = getSonar();
     lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"Distance: %.2f\n",distance);// Display CPU temperature on LCD
+    lcdPrintf(lcdhd,"Distance: %.2f",distance);// Display CPU temperature on LCD
     printf("\n\e[1;33mDistance:%.2f inches \e[0m\n",distance);// Display CPU temperature on LCD
     }
     
@@ -203,9 +200,9 @@ void printCPUTemperature(int lineNum)
     fgets(str_temp,15,fp);      // read file temp
     CPU_temp = atof(str_temp)/1000.0;   // convert to Celsius degrees
     CPU_temp=(CPU_temp*9/5)+32;//convert to Farenheit
-    //printf("CPU's temperature : %.2fF \n",CPU_temp);
-    lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
-    lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
+    printf("\nCPU's temperature : %.2fF \n",CPU_temp);
+    //lcdPosition(lcdhd,0,lineNum);     // set the LCD cursor position to (0,0)
+    //lcdPrintf(lcdhd,"CPU:%.2fF",CPU_temp);// Display CPU temperature on LCD
     fclose(fp);
     }
 void printDataTime(int lineNum)
@@ -337,25 +334,25 @@ int getDHT()
             retVal=0;
             break;
         case DHTLIB_ERROR_CHECKSUM:     //data check has errors
-            printf("DHTLIB_ERROR_CHECKSUM! \n");
+            //printf("DHTLIB_ERROR_CHECKSUM! \n");
             sumCntFailures++;
             retVal=1;
             break;
         case DHTLIB_ERROR_TIMEOUT:      //reading DHT times out
-            printf("DHTLIB_ERROR_TIMEOUT! \n");
+            //printf("DHTLIB_ERROR_TIMEOUT! \n");
             sumCntFailures++;
             retVal=1;
             break;
         case DHTLIB_INVALID_VALUE:      //other errors
-            printf("DHTLIB_INVALID_VALUE! \n");
+            //printf("DHTLIB_INVALID_VALUE! \n");
             sumCntFailures++;
             retVal=1;
             break;
         }
     temperature = (temperature*9/5)+32;
-    printf("\n\e[1;32mCurrent Humidity is %.2f %%, \t Current Temperature is %.2fF\e[0m\n",humidity,temperature);
     if(chk ==0)
         {
+	printf("\n\e[1;32mCurrent Humidity is %.0f%%, \t Current Temperature is %.2fF\e[0m\n",humidity,temperature);
         if(temperature > hightemp)
             hightemp = temperature;
         if(temperature < lowtemp && temperature <100)
