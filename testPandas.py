@@ -1,5 +1,8 @@
 # Import pandas
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -36,3 +39,32 @@ print(f"********** SUM of Null per Column\n{merged_file.isnull().sum()}")
 print(f"********** SUM of Null per Row")
 for i in range(len(merged_file.index)):
     print("********** Nan in row ", i, " : ", merged_file.iloc[i].isnull().sum())
+
+
+xarr = [0,65,68,69,234,65,65,70,67,68,69,56,5,40,98,65,65,68,69,65,65,70,67,68,69,56,5,40,98,65]
+yarr = list(range(len(xarr)))
+elements = np.array(xarr)
+mean = np.mean(elements, axis=0)
+sd = np.std(elements, axis=0)
+print(f"mean = {mean}   dev={sd}")
+final_list = [x for x in xarr if (x > mean - .4 * sd)]
+final_list = [x for x in final_list if (x < mean + .4 * sd)]
+yarr1 = list(range(len(final_list)))
+print(final_list)
+
+#plt.gca().set_color_cycle(['red', 'green'])
+#plt.plot(x, arr)
+
+plt.xlabel("Time (s)")
+plt.ylabel("Temp (F)")
+plt.plot(yarr, xarr, yarr1, final_list)
+plt.draw()
+#plt.show(block=True)
+print("---Plot graph finish---")
+plt.ion()
+plt.show()
+plt.pause(1)
+input("Press Enter")
+
+
+
